@@ -1,4 +1,4 @@
-import { GitHubProfile } from "./app/types";
+import { GitHubProfile } from "./app/api/types";
 import { ImageRef } from "./storage/files";
 
 export type AccountProfile = {
@@ -10,4 +10,5 @@ export type AccountProfile = {
         value: string | null;
         version: number;
     } | null;
+    connectedServices: string[];
 }
