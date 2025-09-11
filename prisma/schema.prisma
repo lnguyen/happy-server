@@ -49,6 +49,7 @@ model Account {
 model TerminalAuthRequest {
     id                String   @id @default(cuid())
     publicKey         String   @unique
+    supportsV2        Boolean  @default(false)
     response          String?
     responseAccountId String?
     responseAccount   Account? @relation(fields: [responseAccountId], references: [id])
@@ -90,6 +91,7 @@ model Session {
     metadataVersion   Int              @default(0)
     agentState        String?
     agentStateVersion Int              @default(0)
+    dataEncryptionKey Bytes?
     seq               Int              @default(0)
     active            Boolean          @default(true)
     lastActiveAt      DateTime         @default(now())
@@ -198,6 +200,7 @@ model Machine {
     metadataVersion    Int      @default(0)
     daemonState        String? // Encrypted - contains dynamic daemon state
     daemonStateVersion Int      @default(0)
+    dataEncryptionKey  Bytes?
     seq                Int      @default(0)
     active             Boolean  @default(true)
     lastActiveAt       DateTime @default(now())
@@ -225,16 +228,16 @@ model UploadedFile {
 }
 
 model ServiceAccountToken {
-    id          String    @id @default(cuid())
-    accountId   String
-    account     Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-    vendor      String    
-    token       Bytes     // Encrypted token
-    metadata    Json?     // Optional vendor metadata
-    lastUsedAt  DateTime?
-    createdAt   DateTime  @default(now())
-    updatedAt   DateTime  @updatedAt
-    
+    id         String    @id @default(cuid())
+    accountId  String
+    account    Account   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+    vendor     String
+    token      Bytes // Encrypted token
+    metadata   Json? // Optional vendor metadata
+    lastUsedAt DateTime?
+    createdAt  DateTime  @default(now())
+    updatedAt  DateTime  @updatedAt
+
     @@unique([accountId, vendor])
     @@index([accountId])
 }

@@ -56,6 +56,7 @@ export type UpdateEvent = {
     metadataVersion: number;
     agentState: string | null;
     agentStateVersion: number;
+    dataEncryptionKey: string | null;
     active: boolean;
     activeAt: number;
     createdAt: number;
@@ -79,6 +80,19 @@ export type UpdateEvent = {
         version: number;
     } | null | undefined;
     github?: GitHubProfile | null | undefined;
+} | {
+    type: 'new-machine';
+    machineId: string;
+    seq: number;
+    metadata: string;
+    metadataVersion: number;
+    daemonState: string | null;
+    daemonStateVersion: number;
+    dataEncryptionKey: string | null;
+    active: boolean;
+    activeAt: number;
+    createdAt: number;
+    updatedAt: number;
 } | {
     type: 'update-machine';
     machineId: string;
@@ -266,6 +280,7 @@ export function buildNewSessionUpdate(session: {
     metadataVersion: number;
     agentState: string | null;
     agentStateVersion: number;
+    dataEncryptionKey: Uint8Array | null;
     active: boolean;
     lastActiveAt: Date;
     createdAt: Date;
@@ -282,6 +297,7 @@ export function buildNewSessionUpdate(session: {
             metadataVersion: session.metadataVersion,
             agentState: session.agentState,
             agentStateVersion: session.agentStateVersion,
+            dataEncryptionKey: session.dataEncryptionKey ? Buffer.from(session.dataEncryptionKey).toString('base64') : null,
             active: session.active,
             activeAt: session.lastActiveAt.getTime(),
             createdAt: session.createdAt.getTime(),
@@ -341,6 +357,40 @@ export function buildUpdateAccountUpdate(userId: string, profile: Partial<Accoun
             id: userId,
             ...profile,
             avatar: profile.avatar ? { ...profile.avatar, url: getPublicUrl(profile.avatar.path) } : undefined
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildNewMachineUpdate(machine: {
+    id: string;
+    seq: number;
+    metadata: string;
+    metadataVersion: number;
+    daemonState: string | null;
+    daemonStateVersion: number;
+    dataEncryptionKey: Uint8Array | null;
+    active: boolean;
+    lastActiveAt: Date;
+    createdAt: Date;
+    updatedAt: Date;
+}, updateSeq: number, updateId: string): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'new-machine',
+            machineId: machine.id,
+            seq: machine.seq,
+            metadata: machine.metadata,
+            metadataVersion: machine.metadataVersion,
+            daemonState: machine.daemonState,
+            daemonStateVersion: machine.daemonStateVersion,
+            dataEncryptionKey: machine.dataEncryptionKey ? Buffer.from(machine.dataEncryptionKey).toString('base64') : null,
+            active: machine.active,
+            activeAt: machine.lastActiveAt.getTime(),
+            createdAt: machine.createdAt.getTime(),
+            updatedAt: machine.updatedAt.getTime()
         },
         createdAt: Date.now()
     };
