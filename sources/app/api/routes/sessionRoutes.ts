@@ -1,4 +1,4 @@
-import { EventRouter, buildNewSessionUpdate } from "@/app/events/eventRouter";
+import { eventRouter, buildNewSessionUpdate } from "@/app/events/eventRouter";
 import { type Fastify } from "../types";
 import { db } from "@/storage/db";
 import { z } from "zod";
@@ -6,8 +6,9 @@ import { Prisma } from "@prisma/client";
 import { log } from "@/utils/log";
 import { randomKeyNaked } from "@/utils/randomKeyNaked";
 import { allocateUserSeq } from "@/storage/seq";
+import { sessionDelete } from "@/app/session/sessionDelete";
 
-export function sessionRoutes(app: Fastify, eventRouter: EventRouter) {
+export function sessionRoutes(app: Fastify) {
 
     // Sessions API
     app.get('/v1/sessions', {
@@ -265,7 +266,7 @@ export function sessionRoutes(app: Fastify, eventRouter: EventRouter) {
                     accountId: userId,
                     tag: tag,
                     metadata: metadata,
-                    dataEncryptionKey: dataEncryptionKey ? Buffer.from(dataEncryptionKey, 'base64') : undefined
+                    dataEncryptionKey: dataEncryptionKey ? new Uint8Array(Buffer.from(dataEncryptionKey, 'base64')) : undefined
                 }
             });
             log({ module: 'session-create', sessionId: session.id, userId }, `Session created: ${session.id}`);
@@ -351,5 +352,26 @@ export function sessionRoutes(app: Fastify, eventRouter: EventRouter) {
                 updatedAt: v.updatedAt.getTime()
             }))
         });
+    });
+
+    // Delete session
+    app.delete('/v1/sessions/:sessionId', {
+        schema: {
+            params: z.object({
+                sessionId: z.string()
+            })
+        },
+        preHandler: app.authenticate
+    }, async (request, reply) => {
+        const userId = request.userId;
+        const { sessionId } = request.params;
+
+        const deleted = await sessionDelete({ uid: userId }, sessionId);
+
+        if (!deleted) {
+            return reply.code(404).send({ error: 'Session not found or not owned by user' });
+        }
+
+        return reply.send({ success: true });
     });
 }

@@ -105,6 +105,52 @@ export type UpdateEvent = {
         version: number;
     };
     activeAt?: number;
+} | {
+    type: 'new-artifact';
+    artifactId: string;
+    seq: number;
+    header: string;
+    headerVersion: number;
+    body: string;
+    bodyVersion: number;
+    dataEncryptionKey: string | null;
+    createdAt: number;
+    updatedAt: number;
+} | {
+    type: 'update-artifact';
+    artifactId: string;
+    header?: {
+        value: string;
+        version: number;
+    };
+    body?: {
+        value: string;
+        version: number;
+    };
+} | {
+    type: 'delete-artifact';
+    artifactId: string;
+} | {
+    type: 'delete-session';
+    sessionId: string;
+} | {
+    type: 'relationship-updated';
+    uid: string;
+    status: 'none' | 'requested' | 'pending' | 'friend' | 'rejected';
+    timestamp: number;
+} | {
+    type: 'new-feed-post';
+    id: string;
+    body: any;
+    cursor: string;
+    createdAt: number;
+} | {
+    type: 'kv-batch-update';
+    changes: Array<{
+        key: string;
+        value: string | null; // null indicates deletion
+        version: number; // -1 for deleted keys
+    }>;
 };
 
 // === EPHEMERAL EVENT TYPES (Transient) ===
@@ -153,7 +199,7 @@ export interface EphemeralPayload {
 
 // === EVENT ROUTER CLASS ===
 
-export class EventRouter {
+class EventRouter {
     private userConnections = new Map<string, Set<ClientConnection>>();
 
     // === CONNECTION MANAGEMENT ===
@@ -271,6 +317,8 @@ export class EventRouter {
     }
 }
 
+export const eventRouter = new EventRouter();
+
 // === EVENT BUILDER FUNCTIONS ===
 
 export function buildNewSessionUpdate(session: {
@@ -343,6 +391,18 @@ export function buildUpdateSessionUpdate(sessionId: string, updateSeq: number, u
             id: sessionId,
             metadata,
             agentState
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildDeleteSessionUpdate(sessionId: string, updateSeq: number, updateId: string): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'delete-session',
+            sid: sessionId
         },
         createdAt: Date.now()
     };
@@ -446,5 +506,117 @@ export function buildMachineStatusEphemeral(machineId: string, online: boolean):
         machineId,
         online,
         timestamp: Date.now()
+    };
+}
+
+export function buildNewArtifactUpdate(artifact: {
+    id: string;
+    seq: number;
+    header: Uint8Array;
+    headerVersion: number;
+    body: Uint8Array;
+    bodyVersion: number;
+    dataEncryptionKey: Uint8Array;
+    createdAt: Date;
+    updatedAt: Date;
+}, updateSeq: number, updateId: string): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'new-artifact',
+            artifactId: artifact.id,
+            seq: artifact.seq,
+            header: Buffer.from(artifact.header).toString('base64'),
+            headerVersion: artifact.headerVersion,
+            body: Buffer.from(artifact.body).toString('base64'),
+            bodyVersion: artifact.bodyVersion,
+            dataEncryptionKey: Buffer.from(artifact.dataEncryptionKey).toString('base64'),
+            createdAt: artifact.createdAt.getTime(),
+            updatedAt: artifact.updatedAt.getTime()
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildUpdateArtifactUpdate(artifactId: string, updateSeq: number, updateId: string, header?: { value: string; version: number }, body?: { value: string; version: number }): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'update-artifact',
+            artifactId,
+            header,
+            body
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildDeleteArtifactUpdate(artifactId: string, updateSeq: number, updateId: string): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'delete-artifact',
+            artifactId
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildRelationshipUpdatedEvent(
+    data: {
+        uid: string;
+        status: 'none' | 'requested' | 'pending' | 'friend' | 'rejected';
+        timestamp: number;
+    },
+    updateSeq: number,
+    updateId: string
+): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'relationship-updated',
+            ...data
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildNewFeedPostUpdate(feedItem: {
+    id: string;
+    body: any;
+    cursor: string;
+    createdAt: number;
+}, updateSeq: number, updateId: string): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'new-feed-post',
+            id: feedItem.id,
+            body: feedItem.body,
+            cursor: feedItem.cursor,
+            createdAt: feedItem.createdAt
+        },
+        createdAt: Date.now()
+    };
+}
+
+export function buildKVBatchUpdateUpdate(
+    changes: Array<{ key: string; value: string | null; version: number }>,
+    updateSeq: number,
+    updateId: string
+): UpdatePayload {
+    return {
+        id: updateId,
+        seq: updateSeq,
+        body: {
+            t: 'kv-batch-update',
+            changes
+        },
+        createdAt: Date.now()
     };
 }
