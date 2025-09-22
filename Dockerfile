@@ -32,6 +32,8 @@ RUN apt-get update && apt-get install -y python3 ffmpeg && rm -rf /var/lib/apt/l
 # Set environment to production
 ENV NODE_ENV=production
 
+COPY ./prisma ./prisma
+
 # Copy necessary files from the builder stage
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
 COPY --from=builder /app/package.json ./package.json
